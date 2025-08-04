@@ -25,8 +25,8 @@ QDRANT_PORT=6333
 1. **Build & run the container:**
 
    ```
-docker build -t openai-tagging-qdrant .
-docker run --env-file .env -p 8000:8000 openai-tagging-qdrant
+   docker build -t openai-tagging-qdrant .
+   docker run --env-file .env -p 8000:8000 openai-tagging-qdrant
    ```
 
 2. **Send a request:**
