@@ -44,6 +44,7 @@ QDRANT_PORT=6333
 - The service only stores the first 4000 characters of content for tagging and embedding.
 - Qdrant vector size is set for `text-embedding-3-large` (3072).
 
+
 ---
 
 ## Running as an AWS Lambda Container
@@ -98,4 +99,4 @@ curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d
 
 ---
 
-If you need further customization (such as a different handler or multi-parameter input), make sure your code in the container is compatible with AWS Lambda's Python handler interface.
+
