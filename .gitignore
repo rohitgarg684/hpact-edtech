@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 .env
+
+# Test files (temporary)
+test_*.py
+demo_usage.py

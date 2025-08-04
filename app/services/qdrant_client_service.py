@@ -1,4 +1,29 @@
+"""
+Qdrant Client Service
+
+This module provides the QdrantService class for interacting with Qdrant vector database,
+and includes a FastAPI health check endpoint.
+
+The module exports:
+- QdrantService: Class for vector database operations
+- router: FastAPI router with health check endpoint
+
+Usage:
+    To include the health check endpoint in your FastAPI application:
+    
+    ```python
+    from fastapi import FastAPI
+    from app.services.qdrant_client_service import router
+    
+    app = FastAPI()
+    app.include_router(router)
+    ```
+    
+    This will add a /health endpoint that returns {"status": "ok"}
+"""
+
 import os
+from fastapi import APIRouter
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct, VectorParams, Distance
 
@@ -38,3 +63,23 @@ class QdrantService:
             }
         )
         self.client.upsert(collection_name=COLLECTION_NAME, points=[point])
+
+
+# FastAPI Router for health check endpoint
+# Usage: Include this router in your FastAPI application with app.include_router(router)
+router = APIRouter()
+
+
+@router.get("/health")
+def health_check():
+    """
+    Health check endpoint for the Qdrant service.
+    
+    Returns:
+        dict: JSON response indicating service health status.
+        
+    Example:
+        GET /health
+        Response: {"status": "ok"}
+    """
+    return {"status": "ok"}
