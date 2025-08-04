@@ -7,10 +7,13 @@ EMBEDDING_SIZE = 3072  # for text-embedding-3-large
 
 class QdrantService:
     def __init__(self):
-        self.client = QdrantClient(
-            host=os.getenv("QDRANT_HOST", "localhost"),
-            port=int(os.getenv("QDRANT_PORT", "6333"))
-        )
+        host = os.environ.get("QDRANT_HOST")
+        port = os.environ.get("QDRANT_PORT")
+        if host and port:
+            self.client = QdrantClient(host=host, port=int(port))
+        else:
+            # Use in-memory Qdrant if environment variables are missing
+            self.client = QdrantClient(":memory:")
         self.init_collection()
 
     def init_collection(self):
