@@ -43,3 +43,60 @@ QDRANT_PORT=6333
 
 - The service only stores the first 4000 characters of content for tagging and embedding.
 - Qdrant vector size is set for `text-embedding-3-large` (3072).
+
+
+---
+
+## Running as an AWS Lambda Container
+
+You can deploy this service as a container image on AWS Lambda for serverless execution.
+
+### 1. Build the Lambda-Compatible Image
+
+Ensure your Dockerfile (or Dockerfile.lambda) is compatible with AWS Lambda's runtime. Typically, you should use the AWS Lambda Python base image, for example:
+
+```Dockerfile
+FROM public.ecr.aws/lambda/python:3.11
+# (add your copy/install commands here)
+CMD ["app.handler"]  # Example entrypoint; adjust as needed for your handler
+```
+
+Build the image:
+
+```bash
+docker build -t openai-tagging-qdrant-lambda -f Dockerfile.lambda .
+```
+
+### 2. Test Locally (Optional)
+
+You can test your Lambda container image locally before deployment:
+
+```bash
+docker run -p 9000:8080 openai-tagging-qdrant-lambda
+```
+
+Then invoke it with:
+
+```bash
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"url":"https://example.com"}'
+```
+
+### 3. Deploy to AWS Lambda
+
+1. Push your image to Amazon ECR (Elastic Container Registry).
+2. In AWS Lambda, create a function using the "Container image" option and provide your image URI from ECR.
+
+### 4. Passing Inputs
+
+- The Lambda expects a JSON payload like:
+  ```json
+  {
+    "url": "https://example.com"
+  }
+  ```
+- Input should be provided as the event payload for the Lambda function.
+- The response will return the tags and embedding dimension.
+
+---
+
+
