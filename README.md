@@ -32,7 +32,7 @@ QDRANT_PORT=6333
 2. **Send a request:**
 
    ```bash
-curl -X POST "http://localhost:8000/tag-and-embed/" -H  "accept: application/json" -H  "Content-Type: application/json" -d '{"url":"https://example.com"}'
+   curl -X POST "http://localhost:8000/tag-and-embed/" -H  "accept: application/json" -H  "Content-Type: application/json" -d '{"url":"https://example.com"}'
    ```
 
 ## Endpoints
