@@ -49,3 +49,4 @@ def health_check():
     Returns 200 OK if the service is up.
     """
     return {"status": "ok"}
+
