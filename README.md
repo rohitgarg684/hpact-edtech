@@ -1,102 +1,262 @@
-# OpenAI Tagging & Qdrant Container
+# LangChain Web Content Processing Pipeline
 
 ## Overview
 
-A Python microservice that fetches content from a URL, tags it using OpenAI GPT-3.5, generates an embedding using OpenAI's `text-embedding-3-large` model, and stores the result in a Qdrant vector database.
+A modular Python application that implements a sophisticated web content extraction, tagging, embedding, and knowledge graph storage pipeline using LangChain integrations. The system crawls websites, extracts meaningful content, generates structured tags using OpenAI's language models, creates embeddings, and stores everything in a vector database for semantic search.
+
+## Architecture
+
+The application follows a modular architecture with clear separation of concerns:
+
+- **Web Crawler**: Sophisticated content extraction using trafilatura and BeautifulSoup
+- **LangChain Pipeline**: Orchestrates tagging, embedding, and knowledge graph storage
+- **Knowledge Graph**: Vector database storage for semantic search and retrieval
+- **CLI Interface**: Command-line tool for processing URLs and searching content
+
+## Folder Structure
+
+```
+├── src/                    # Application source code
+│   ├── web_crawler.py     # Sophisticated web crawler with LangChain Document generation
+│   ├── pipeline.py        # LangChain pipeline for processing and storage
+│   └── main.py           # Entry point for URL processing and CLI interface
+├── tests/                 # Unit tests
+│   ├── test_web_crawler.py    # Tests for web crawler with mocked HTTP requests
+│   └── test_pipeline.py       # Tests for pipeline with mocked LangChain components
+├── requirements.txt       # Python dependencies
+├── README.md             # This documentation
+└── .env.example          # Example environment configuration
+```
+
+## Key Components
+
+### Web Crawler (`src/web_crawler.py`)
+- Uses **trafilatura** for intelligent content extraction
+- Falls back to **BeautifulSoup** for robust HTML parsing
+- Generates **LangChain Document** objects with rich metadata
+- Extracts titles, descriptions, keywords, and Open Graph data
+- Handles various content types and edge cases
+
+### LangChain Pipeline (`src/pipeline.py`)
+- **Content Tagging**: Uses OpenAI GPT models for structured content analysis
+- **Embeddings**: Generates semantic embeddings using OpenAI's embedding models
+- **Knowledge Graph Storage**: Stores processed content in Qdrant vector database
+- **Semantic Search**: Enables similarity search across processed documents
+- **Modular Design**: Each processing step is independently configurable
+
+### Main Entry Point (`src/main.py`)
+- **CLI Interface**: Process single URLs, batch processing, or interactive mode
+- **Search Functionality**: Query the knowledge graph for similar content
+- **Configuration**: All settings read from environment variables
+- **Output Formats**: JSON export and console output
 
 ## Prerequisites
 
-- Docker
+- Python 3.8+
 - OpenAI API Key
-- Running Qdrant instance (can use [docker-compose](https://qdrant.tech/documentation/quick-start/))
+- Qdrant vector database (local or remote)
 
-## Environment Variables
+## Installation & Setup
 
-Create a `.env` file or set these variables:
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd hpact-edtech
+   ```
 
-```
-OPENAI_API_KEY=your_openai_api_key
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-```
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Set up environment variables:**
+   Create a `.env` file:
+   ```bash
+   # Required
+   OPENAI_API_KEY=your_openai_api_key_here
+   
+   # Qdrant Configuration
+   QDRANT_HOST=localhost
+   QDRANT_PORT=6333
+   QDRANT_COLLECTION_NAME=langchain_knowledge_graph
+   
+   # OpenAI Configuration (optional, defaults provided)
+   OPENAI_MODEL=gpt-3.5-turbo
+   OPENAI_TEMPERATURE=0.1
+   OPENAI_EMBEDDING_MODEL=text-embedding-3-large
+   EMBEDDING_SIZE=3072
+   
+   # Web Crawler Configuration (optional)
+   WEB_CRAWLER_TIMEOUT=10
+   WEB_CRAWLER_MAX_CONTENT_LENGTH=50000
+   ```
+
+4. **Start Qdrant (if running locally):**
+   ```bash
+   docker run -p 6333:6333 qdrant/qdrant
+   ```
 
 ## Usage
 
-1. **Build & run the container:**
+### Command Line Interface
 
-   ```
-   docker build -t openai-tagging-qdrant .
-   docker run --env-file .env -p 8000:8000 openai-tagging-qdrant
-   ```
-
-2. **Send a request:**
-
+1. **Process a single URL:**
    ```bash
-   curl -X POST "http://localhost:8000/tag-and-embed/" -H  "accept: application/json" -H  "Content-Type: application/json" -d '{"url":"https://example.com"}'
+   python src/main.py --url https://example.com/article
    ```
 
-## Endpoints
+2. **Process multiple URLs from file:**
+   ```bash
+   # Create urls.txt with one URL per line
+   python src/main.py --urls-file urls.txt
+   ```
 
-- `POST /tag-and-embed/` - Takes a JSON body with `url` and returns tags, embedding dimension.
+3. **Search the knowledge graph:**
+   ```bash
+   python src/main.py --search "machine learning algorithms"
+   ```
 
-## Notes
+4. **Interactive mode:**
+   ```bash
+   python src/main.py
+   # Then enter URLs or 'search <query>' commands
+   ```
 
-- The service only stores the first 4000 characters of content for tagging and embedding.
-- Qdrant vector size is set for `text-embedding-3-large` (3072).
+5. **Export results to JSON:**
+   ```bash
+   python src/main.py --url https://example.com --output results.json
+   ```
 
+### Programmatic Usage
 
----
+```python
+from src.web_crawler import create_web_crawler
+from src.pipeline import create_pipeline
 
-## Running as an AWS Lambda Container
+# Initialize components
+crawler = create_web_crawler()
+pipeline = create_pipeline()
 
-You can deploy this service as a container image on AWS Lambda for serverless execution.
+# Process a URL
+document = crawler.crawl_url("https://example.com/article")
+result = pipeline.process_document(document)
 
-### 1. Build the Lambda-Compatible Image
+print(f"Processed document: {result['doc_id']}")
+print(f"Generated tags: {result['tags']['primary_tags']}")
 
-Ensure your Dockerfile (or Dockerfile.lambda) is compatible with AWS Lambda's runtime. Typically, you should use the AWS Lambda Python base image, for example:
-
-```Dockerfile
-FROM public.ecr.aws/lambda/python:3.11
-# (add your copy/install commands here)
-CMD ["app.handler"]  # Example entrypoint; adjust as needed for your handler
+# Search for similar content
+similar_docs = pipeline.search_similar_documents("artificial intelligence", limit=5)
 ```
 
-Build the image:
+## Features
+
+### Sophisticated Web Crawling
+- **Intelligent Content Extraction**: Uses trafilatura for main content identification
+- **Robust Parsing**: BeautifulSoup fallback for reliable HTML processing
+- **Metadata Extraction**: Titles, descriptions, keywords, Open Graph data
+- **Content Filtering**: Removes navigation, ads, and boilerplate content
+- **Error Handling**: Graceful degradation with multiple extraction strategies
+
+### Advanced Content Analysis
+- **Structured Tagging**: JSON-formatted tags with categories, topics, and sentiment
+- **Content Classification**: Automatic categorization by type and complexity
+- **Key Concept Extraction**: Identifies important terms and concepts
+- **Summarization**: Generates concise content summaries
+- **Multilingual Support**: Works with content in various languages
+
+### Knowledge Graph Storage
+- **Vector Database**: High-performance semantic storage in Qdrant
+- **Rich Metadata**: Preserves all extracted information and analysis
+- **Semantic Search**: Find similar content using natural language queries
+- **Scalable Storage**: Handles large collections of processed documents
+- **Efficient Retrieval**: Fast similarity search with configurable limits
+
+### LangChain Integration
+- **Document Objects**: Native LangChain Document format throughout pipeline
+- **Chain Composition**: Modular processing chains for different tasks
+- **Model Flexibility**: Easy switching between different OpenAI models
+- **Prompt Engineering**: Optimized prompts for content analysis tasks
+- **Error Handling**: Robust error handling and fallback strategies
+
+## Testing
+
+Run the test suite:
 
 ```bash
-docker build -t openai-tagging-qdrant-lambda -f Dockerfile.lambda .
+# Run all tests
+pytest tests/ -v
+
+# Run specific test files
+pytest tests/test_web_crawler.py -v
+pytest tests/test_pipeline.py -v
+
+# Run with coverage
+pytest tests/ --cov=src --cov-report=html
 ```
 
-### 2. Test Locally (Optional)
+### Test Coverage
 
-You can test your Lambda container image locally before deployment:
+- **Web Crawler Tests**: Mock HTTP requests, test extraction methods, error handling
+- **Pipeline Tests**: Mock LangChain components, test processing workflow
+- **Integration Tests**: End-to-end workflow testing with mocked external services
+- **Error Scenarios**: Comprehensive error handling and edge case testing
 
+## Configuration
+
+All configuration is handled through environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | Required | OpenAI API key for language models |
+| `QDRANT_HOST` | localhost | Qdrant server host |
+| `QDRANT_PORT` | 6333 | Qdrant server port |
+| `QDRANT_COLLECTION_NAME` | langchain_knowledge_graph | Collection name for documents |
+| `OPENAI_MODEL` | gpt-3.5-turbo | OpenAI model for content analysis |
+| `OPENAI_TEMPERATURE` | 0.1 | Model temperature for consistent results |
+| `OPENAI_EMBEDDING_MODEL` | text-embedding-3-large | Embedding model |
+| `EMBEDDING_SIZE` | 3072 | Embedding vector dimensions |
+| `WEB_CRAWLER_TIMEOUT` | 10 | HTTP request timeout in seconds |
+| `WEB_CRAWLER_MAX_CONTENT_LENGTH` | 50000 | Maximum content length to process |
+
+## Performance & Scalability
+
+- **Efficient Processing**: Optimized content extraction and processing pipeline
+- **Batch Operations**: Support for processing multiple URLs efficiently  
+- **Memory Management**: Controlled content length and smart truncation
+- **Error Recovery**: Robust error handling without stopping batch processing
+- **Scalable Storage**: Qdrant vector database handles large document collections
+- **Concurrent Processing**: Can be extended for parallel URL processing
+
+## Examples
+
+### Processing News Articles
 ```bash
-docker run -p 9000:8080 openai-tagging-qdrant-lambda
+python src/main.py --url https://news.site.com/article/123
 ```
+Output includes structured tags for topics, sentiment, complexity, and key concepts.
 
-Then invoke it with:
-
+### Building a Knowledge Base
 ```bash
-curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"url":"https://example.com"}'
+# Process a list of documentation URLs
+python src/main.py --urls-file documentation_urls.txt --output knowledge_base.json
 ```
 
-### 3. Deploy to AWS Lambda
+### Semantic Search
+```bash
+python src/main.py --search "machine learning best practices" --limit 10
+```
+Returns similar documents with relevance scores and content previews.
 
-1. Push your image to Amazon ECR (Elastic Container Registry).
-2. In AWS Lambda, create a function using the "Container image" option and provide your image URI from ECR.
+## Contributing
 
-### 4. Passing Inputs
+1. Follow the modular architecture patterns established in the codebase
+2. Add comprehensive tests for new functionality
+3. Update documentation for new features or configuration options
+4. Use environment variables for all configuration
+5. Follow LangChain patterns for document processing and chain composition
 
-- The Lambda expects a JSON payload like:
-  ```json
-  {
-    "url": "https://example.com"
-  }
-  ```
-- Input should be provided as the event payload for the Lambda function.
-- The response will return the tags and embedding dimension.
+## License
 
----
+[Add your license information here]
 
 
