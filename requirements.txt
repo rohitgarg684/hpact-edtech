@@ -1,6 +1,4 @@
-fastapi
-uvicorn
-openai
 requests
-qdrant-client
-python-dotenv
+beautifulsoup4
+trafilatura
+readability-lxml
