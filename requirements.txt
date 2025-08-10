@@ -4,3 +4,13 @@ openai
 requests
 qdrant-client
 python-dotenv
+langchain
+langchain-openai
+langchain-community
+langchain-qdrant
+boto3
+beautifulsoup4
+lxml
+html2text
+scrapy
+langchain-experimental
