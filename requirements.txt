@@ -4,3 +4,12 @@ openai
 requests
 qdrant-client
 python-dotenv
+langchain
+langchain-openai
+langchain-community
+trafilatura
+beautifulsoup4
+lxml
+neptune
+urllib3
+aiohttp
