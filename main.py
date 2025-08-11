@@ -1,31 +1,33 @@
-import os
-from langchain.document_loaders import DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.llms import OpenAI
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Qdrant
-from langchain.graph_stores import NeptuneGraphStore
-from pipeline import process_documents
+"""
+main.py
 
-# Environment variables (replace with your secrets manager in production)
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-QDRANT_URL = os.environ.get("QDRANT_URL")
-QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
-NEPTUNE_ENDPOINT = os.environ.get("NEPTUNE_ENDPOINT")
-NEPTUNE_PORT = os.environ.get("NEPTUNE_PORT")
+Entry point for the LangChain pipeline application.
+Processes a URL, extracts content, tags, embeds, and stores knowledge graph triples.
+"""
 
-def main():
-    docs_path = "data/documents"
-    loader = DirectoryLoader(docs_path)
-    documents = loader.load()
-    process_documents(
-        documents,
-        openai_api_key=OPENAI_API_KEY,
-        qdrant_url=QDRANT_URL,
-        qdrant_api_key=QDRANT_API_KEY,
-        neptune_endpoint=NEPTUNE_ENDPOINT,
-        neptune_port=NEPTUNE_PORT
-    )
+from web_crawler import crawl_and_parse
+from pipeline import tag_documents, embed_and_store, build_knowledge_graph
+
+def process_url(url):
+    """
+    Orchestrates crawling, tagging, embedding, and graph storage for a given URL.
+
+    Args:
+        url (str): The target URL.
+    """
+    doc = crawl_and_parse(url)
+    docs = [doc]
+
+    tagged_docs = tag_documents(docs)
+    embed_and_store(tagged_docs)
+    build_knowledge_graph(tagged_docs)
+
+    print("URL processed, embedded in Qdrant, and added to Neptune knowledge graph.")
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python src/main.py <url>")
+        exit(1)
+    url = sys.argv[1]
+    process_url(url)
