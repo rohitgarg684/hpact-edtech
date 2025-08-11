@@ -1,64 +1,70 @@
-import requests
-from bs4 import BeautifulSoup
-import trafilatura
-from readability import Document
+"""
+pipeline.py
 
-class WebCrawler:
-    def __init__(self, user_agent=None, timeout=10):
-        self.headers = {
-            'User-Agent': user_agent or 'Mozilla/5.0 (compatible; WebCrawler/1.0; +https://example.com/bot)'
-        }
-        self.timeout = timeout
+Orchestrates tagging, embedding, and knowledge graph storage using LangChain integrations.
+Reads configuration from environment variables.
 
-    def fetch_url(self, url):
-        resp = requests.get(url, headers=self.headers, timeout=self.timeout)
-        resp.raise_for_status()
-        return resp.text
+Functions:
+- tag_documents(docs): Tags documents using OpenAI LLM.
+- embed_and_store(docs): Embeds documents and stores them in Qdrant.
+- build_knowledge_graph(docs): Extracts triples using LLM and stores them in Neptune.
+"""
 
-    def extract_with_trafilatura(self, html, url=None):
-        downloaded = trafilatura.extract(html, url=url, include_comments=False)
-        return downloaded or ""
+import os
+from langchain.llms import OpenAI
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Qdrant
+from langchain.graph_stores import NeptuneGraphStore
 
-    def extract_with_readability(self, html):
-        doc = Document(html)
-        content = doc.summary()
-        title = doc.title()
-        return title, content
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "edtech_docs")
+NEPTUNE_ENDPOINT = os.environ.get("NEPTUNE_ENDPOINT")
+NEPTUNE_PORT = int(os.environ.get("NEPTUNE_PORT", "8182"))
 
-    def extract_metadata(self, html):
-        soup = BeautifulSoup(html, 'html.parser')
-        title = soup.title.string if soup.title else ""
-        meta_desc = ""
-        desc_tag = soup.find('meta', attrs={'name': 'description'})
-        if desc_tag and 'content' in desc_tag.attrs:
-            meta_desc = desc_tag['content']
-        return {
-            "title": title,
-            "meta_description": meta_desc
-        }
+def tag_documents(docs):
+    """
+    Tags each document using OpenAI LLM.
 
-    def crawl(self, url):
-        html = self.fetch_url(url)
-        # State-of-the-art content extraction
-        main_content = self.extract_with_trafilatura(html, url)
-        if not main_content:
-            # fallback to readability-lxml if trafilatura fails
-            _, main_content = self.extract_with_readability(html)
-        meta = self.extract_metadata(html)
-        return {
-            "url": url,
-            "title": meta["title"],
-            "meta_description": meta["meta_description"],
-            "content": main_content
-        }
+    Args:
+        docs (list): List of LangChain Document objects.
 
-# Example usage
-if __name__ == "__main__":
-    crawler = WebCrawler()
-    url = "https://en.wikipedia.org/wiki/LangChain"
-    result = crawler.crawl(url)
-    print("Title:", result["title"])
-    print("Meta Description:", result["meta_description"])
-    print("Content sample:", result["content"][:500])
+    Returns:
+        list: Documents with 'tags' attribute added.
+    """
+    llm = OpenAI(model="gpt-3.5-turbo")
+    for doc in docs:
+        doc.tags = llm.predict(f"Tag this document:\n{doc.page_content}")
+    return docs
 
-    # For LangChain integration, you can use the result["content"] as Document input
+def embed_and_store(docs):
+    """
+    Embeds documents and stores them in Qdrant vector DB.
+
+    Args:
+        docs (list): List of LangChain Document objects.
+
+    Returns:
+        Qdrant: Qdrant vector database instance.
+    """
+    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+    vectordb = Qdrant.from_documents(
+        docs, embeddings, url=QDRANT_URL, collection_name=QDRANT_COLLECTION
+    )
+    return vectordb
+
+def build_knowledge_graph(docs):
+    """
+    Extracts triples using LLM and stores them in Neptune knowledge graph DB.
+
+    Args:
+        docs (list): List of LangChain Document objects.
+
+    Returns:
+        NeptuneGraphStore: Neptune graph store instance.
+    """
+    llm = OpenAI(model="gpt-3.5-turbo")
+    graph_store = NeptuneGraphStore(endpoint=NEPTUNE_ENDPOINT, port=NEPTUNE_PORT)
+    for doc in docs:
+        triples = llm.predict(f"Extract knowledge graph triples:\n{doc.page_content}")
+        graph_store.add_triples(triples)
+    return graph_store
