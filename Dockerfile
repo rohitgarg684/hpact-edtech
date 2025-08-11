@@ -2,9 +2,17 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y build-essential libxml2-dev libxslt1-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy application code
+COPY src/ src/
+COPY README.md .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "src/main.py", "https://example.com"]
